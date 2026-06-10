@@ -1,4 +1,4 @@
-# DartStream
+# Flappy Bird game
 
 DartStream is a Flutter web app that uses Firebase for authentication and a
 DartStream backend for the signed-in workspace.
