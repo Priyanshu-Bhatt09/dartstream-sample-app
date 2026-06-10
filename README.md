@@ -1,94 +1,141 @@
-# Northstar App
+# DartStream
 
-This repo is a starter template for a Flutter app that uses:
+DartStream is a Flutter web app that uses Firebase for authentication and a
+DartStream backend for the signed-in workspace.
 
-- Firebase for sign up / sign in
-- DartStream as the backend
-- a simple authenticated shell with backend-connected screens
+The app has three main parts:
 
-The goal is to give you the architecture and wiring you need first, without any game or extra product logic.
+- a Firebase login screen
+- a live dashboard that loads session, profile, inventory, flags, and channels
+- a simple Flappy Bird game with score, game over, and local high score
 
-## What is included
+## Project layout
 
-- `bin/smoke.dart` - headless smoke test for the backend contracts
-- `bin/auth_deepdive.dart` - deeper auth coverage
-- `bin/platform_deepdive.dart` - platform service coverage
-- `bin/experience_deepdive.dart` - experience service coverage
-- `bin/reactive_deepdive.dart` - reactive service coverage
-- `bin/persistence_deepdive.dart` - persistence service coverage
-- `flutter_client/` - Flutter web starter app
+```text
+.
+├── bin/
+│   ├── smoke.dart
+│   ├── auth_deepdive.dart
+│   ├── platform_deepdive.dart
+│   ├── experience_deepdive.dart
+│   ├── reactive_deepdive.dart
+│   └── persistence_deepdive.dart
+├── flutter_client/
+│   ├── lib/main.dart
+│   ├── lib/state/session.dart
+│   ├── lib/api/firebase_auth.dart
+│   ├── lib/api/dartstream.dart
+│   ├── lib/screens/login_screen.dart
+│   ├── lib/screens/shell_screen.dart
+│   ├── lib/screens/home_screen.dart
+│   ├── lib/screens/profile_screen.dart
+│   ├── lib/screens/feature_flags_screen.dart
+│   ├── lib/screens/experience_screen.dart
+│   ├── lib/screens/reactive_screen.dart
+│   ├── lib/screens/persistence_screen.dart
+│   └── lib/game/flappy_bird_game.dart
+├── .env.example
+└── README.md
+```
 
-## Flutter app architecture
+## How it works
 
-The Flutter client is split into a few small layers:
+1. The user signs in or creates an account with Firebase.
+2. Firebase returns an ID token.
+3. The app sends that token to DartStream.
+4. DartStream verifies the token and returns the app user and tenant IDs.
+5. The shell opens and the dashboard loads live backend data.
+6. The Flappy Bird game runs inside the dashboard and saves the best score
+   locally in the browser.
 
-- `main.dart` - app bootstrap and signed-in / signed-out switch
-- `state/session.dart` - auth state, session ids, and API client setup
-- `api/firebase_auth.dart` - Firebase login and sign up through Identity Toolkit
-- `api/dartstream.dart` - typed DartStream API client
-- `screens/login_screen.dart` - create account / sign in form
-- `screens/shell_screen.dart` - post-login navigation
-- `screens/home_screen.dart` - dashboard that proves Firebase and DartStream are connected
-- `screens/profile_screen.dart` - user profile and session management
-- `screens/feature_flags_screen.dart` - platform feature-flag CRUD
-- `screens/experience_screen.dart` - experience data views
-- `screens/reactive_screen.dart` - event and subscription CRUD
-- `screens/persistence_screen.dart` - persistence CRUD
+## What the dashboard shows
 
-## First-time setup
+The main dashboard bootstraps these live views:
 
-1. Create a Firebase project for your app.
-2. Add a web app in Firebase and copy the web API key.
-3. Configure DartStream to trust that Firebase project.
-4. Copy `.env.example` to `.env` and fill in the values.
-5. Run the Flutter client with the Firebase key injected at build time.
+- auth session summary
+- experience profile
+- platform feature flags
+- inventory
+- streaming channels
+- Flappy Bird score and high score
 
-## Environment variables
+The app keeps the dashboard intentionally simple so the important parts are
+easy to understand.
 
-From `.env.example`:
+## Requirements
+
+- Dart SDK `^3.12`
+- Flutter `3.44+`
+- Chrome for the web client
+- A Firebase project with Email/Password authentication enabled
+- DartStream backend endpoints that trust the same Firebase project
+
+## Configuration
+
+Copy the example environment file and fill it in:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Environment values used by the repo:
 
 - `FIREBASE_API_KEY` - Firebase web API key
-- `TEST_EMAIL` / `TEST_PASSWORD` - smoke test credentials
+- `TEST_EMAIL` / `TEST_PASSWORD` - credentials for the smoke CLI
 - `API_AUTH` - auth service host
 - `API_PLATFORM` - platform service host
 - `API_EXPERIENCE` - experience service host
 - `API_REACTIVE` - reactive service host
 - `API_PERSISTENCE` - persistence service host
 
-## Run the Flutter client
+For the Flutter web client, pass the Firebase key at build time:
 
-```sh
-set -a && source .env && set +a
-cd flutter_client
-flutter pub get
-flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=$FIREBASE_API_KEY
+```powershell
+--dart-define=FIREBASE_API_KEY=YOUR_KEY
 ```
 
-On Windows PowerShell, use the equivalent environment loading for your shell.
+## Run the smoke CLI
 
-## How the app works
+From the repo root:
 
-1. The user signs up or signs in with Firebase.
-2. Firebase returns an ID token.
-3. The Flutter client sends that token to DartStream.
-4. DartStream verifies the token and returns the app user and tenant ids.
-5. The app opens the shell and starts loading backend data.
+```powershell
+dart pub get
+dart run bin/smoke.dart
+```
 
-## Why this layout is useful
+The smoke CLI signs in with Firebase, calls the auth backend, and then checks
+the live service endpoints.
 
-This starter keeps the important boundaries separate:
+## Run the Flutter web client
 
-- UI code stays in `screens/`
-- auth state stays in `state/`
-- Firebase logic stays in one auth adapter
-- DartStream requests stay in one typed API client
+From the repo root:
 
-That makes it easy to add your own screens later without rewriting the auth flow.
+```powershell
+cd flutter_client
+flutter pub get
+flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=YOUR_KEY
+```
 
-## Extending it
+If you use PowerShell, set `FIREBASE_API_KEY` in the current session before
+running Flutter, or paste the key directly into `--dart-define`.
 
-Add your own product features by creating a new screen and calling the relevant
-DartStream endpoint from `api/dartstream.dart`.
+## Screens
+
+- `LoginScreen` - create account / sign in with Firebase
+- `ShellScreen` - post-login navigation
+- `HomeScreen` - dashboard plus Flappy Bird clone
+- `ProfileScreen` - user profile and sessions
+- `FeatureFlagsScreen` - feature flags
+- `ExperienceScreen` - experience service views
+- `ReactiveScreen` - reactive events and resources
+- `PersistenceScreen` - persistence resources
+
+## Notes
+
+- The app is designed around a live backend, not mocks.
+- High score for the Flappy Bird game is stored locally in the browser.
+- The dashboard is intentionally minimal so it feels like a real app rather
+  than a demo shell.
 
 ## License
 
