@@ -15,7 +15,6 @@ It includes:
 - Wired the game to DartStream flags, cloud-save, and reactive events
 - Added the public `dartstream_client` package to the Flutter app
 - Reintroduced CI for root analysis and Flutter analysis
-- Kept the app branded as Northstar instead of the original sample name
 
 ## Project layout
 
