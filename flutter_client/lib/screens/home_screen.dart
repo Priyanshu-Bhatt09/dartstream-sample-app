@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/material.dart';
 
 import '../api/dartstream.dart';
 import '../game/flappy_bird_game.dart';
 import '../state/session.dart';
 
-/// Simple dashboard: one bootstrap that loads the live session plus the six
-/// service snapshots this app is built around.
+/// Clean dashboard: one bootstrap that loads the live session, a Flappy Bird
+/// clone powered by DartStream, and the core service snapshots this app is
+/// built around.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.session});
   final Session session;
@@ -20,26 +21,28 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _userId => widget.session.userId!;
   String get _tenantId => widget.session.tenantId!;
 
-  late final FlappyBirdGame _game;
   bool _loading = true;
   Object? _error;
   Map<String, dynamic>? _authMe;
   Map<String, dynamic>? _profile;
-  Map<String, dynamic>? _featureFlags;
-  Map<String, dynamic>? _inventory;
+  List<dynamic> _flags = const [];
+  List<dynamic> _inventory = const [];
   List<dynamic> _channels = const [];
+  Map<String, dynamic>? _cloudSave;
+  FlappyBirdGame? _game;
+  FlappyBirdGameSettings _gameSettings =
+      const FlappyBirdGameSettings(
+    gravity: 920,
+    pipeSpeed: 190,
+    pipeGap: 170,
+    spawnInterval: 1.45,
+    hardMode: false,
+  );
 
   @override
   void initState() {
     super.initState();
-    _game = FlappyBirdGame(onChanged: _syncGameUi);
     _load();
-  }
-
-  void _syncGameUi() {
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   Future<void> _load() async {
@@ -51,18 +54,35 @@ class _HomeScreenState extends State<HomeScreen> {
       final results = await Future.wait([
         _api.me(),
         _api.profile(userId: _userId, tenantId: _tenantId),
-        _api.featureFlags(tenantId: _tenantId),
+        _api.listFeatureFlags(tenantId: _tenantId),
         _api.inventory(userId: _userId, tenantId: _tenantId),
         _api.streamingChannels(tenantId: _tenantId),
+        _api.loadSnapshot(userId: _userId, tenantId: _tenantId, slotKey: 'flappy'),
       ]);
 
+      final flags = results[2] as List<dynamic>;
+      final settings = FlappyBirdGameSettings.fromFlags(flags);
       if (!mounted) return;
+
       setState(() {
         _authMe = results[0] as Map<String, dynamic>;
         _profile = results[1] as Map<String, dynamic>;
-        _featureFlags = results[2] as Map<String, dynamic>;
-        _inventory = results[3] as Map<String, dynamic>;
+        _flags = flags;
+        _inventory = ((results[3] as Map<String, dynamic>)['inventory'] is Map)
+            ? ((results[3] as Map<String, dynamic>)['inventory'] as Map)['items'] as List<dynamic>? ?? const []
+            : const [];
         _channels = results[4] as List<dynamic>;
+        _cloudSave = results[5] as Map<String, dynamic>?;
+        _gameSettings = settings;
+        _game = FlappyBirdGame(
+          api: _api,
+          userId: _userId,
+          tenantId: _tenantId,
+          settings: settings,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+        );
         _loading = false;
       });
     } catch (e) {
@@ -121,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          _section(title: 'Cloud save', child: Text(_cloudSaveSummary())),
           _section(title: 'Profile snapshot', child: Text(_profileSummary())),
           _section(
             title: 'Platform flags',
@@ -158,8 +179,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'A clean, simple dashboard that boots one session and shows the '
-              'live services behind it.',
+              'A clean dashboard plus a live Flappy Bird clone powered by '
+              'DartStream features.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -169,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Chip(label: Text(widget.session.email ?? 'signed-in user')),
                 Chip(label: Text('services: 6')),
-                Chip(label: Text('session live')),
+                Chip(label: Text(_gameSettings.hardMode ? 'hard mode' : 'normal mode')),
               ],
             ),
           ],
@@ -179,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _gameCard() {
+    final game = _game;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -198,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Tap to jump. Avoid pipes. Score and high score save locally.',
+                        'Tap to jump. Avoid pipes. Score and high score save locally and in DartStream.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -208,14 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Wrap(
                   spacing: 8,
                   children: [
-                    Chip(label: Text('Score: ${_game.score}')),
-                    Chip(label: Text('Best: ${_game.highScore}')),
-                    if (_game.isGameOver)
-                      Chip(
-                        label: const Text('Game over'),
-                        backgroundColor:
-                            Theme.of(context).colorScheme.errorContainer,
-                      ),
+                    Chip(label: Text('Score: ${game?.score ?? 0}')),
+                    Chip(label: Text('Best: ${game?.highScore ?? 0}')),
+                    Chip(label: Text(_gameSettings.hardMode ? 'Hard' : 'Normal')),
                   ],
                 ),
               ],
@@ -225,40 +242,45 @@ class _HomeScreenState extends State<HomeScreen> {
               aspectRatio: 16 / 9,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    GameWidget(game: _game),
-                    Positioned(
-                      left: 12,
-                      bottom: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _game.isGameOver
-                              ? 'Tap anywhere or press restart'
-                              : 'Tap anywhere to jump',
-                        ),
+                child: game == null
+                    ? const ColoredBox(
+                        color: Color(0xFFEAF3FF),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          GameWidget(game: game),
+                          Positioned(
+                            left: 12,
+                            bottom: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.84),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                game.isGameOver
+                                    ? 'Tap to restart'
+                                    : 'Tap anywhere to jump',
+                              ),
+                            ),
+                          ),
+                          if (game.isGameOver)
+                            Positioned(
+                              right: 12,
+                              bottom: 12,
+                              child: FilledButton(
+                                onPressed: game.restart,
+                                child: const Text('Restart'),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                    if (_game.isGameOver)
-                      Positioned(
-                        right: 12,
-                        bottom: 12,
-                        child: FilledButton(
-                          onPressed: _game.restart,
-                          child: const Text('Restart'),
-                        ),
-                      ),
-                  ],
-                ),
               ),
             ),
           ],
@@ -271,10 +293,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final cards = [
       ('Auth', _authMe == null ? 'loading' : 'ok'),
       ('Profile', _profile == null ? 'loading' : 'ok'),
-      ('Flags', _featureFlags == null ? 'loading' : '${_flagCount()}'),
-      ('Inventory', _inventory == null ? 'loading' : '${_itemCount()}'),
+      ('Flags', '${_flags.length}'),
+      ('Inventory', '${_inventory.length}'),
       ('Channels', '$_channelCount'),
-      ('Session', '${widget.session.status.name}'),
+      ('Session', widget.session.status.name),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -347,35 +369,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _featureFlagsSummary() {
-    final flags = _featureFlags?['flags'];
-    if (flags is List && flags.isNotEmpty) {
-      return flags.take(8).map((f) => '- $f').join('\n');
+    if (_flags.isNotEmpty) {
+      return _flags.take(8).map((f) => '- $f').join('\n');
     }
     return 'No feature flags returned yet.';
   }
 
   String _inventorySummary() {
-    final inv = (_inventory?['inventory'] is Map)
-        ? _inventory!['inventory'] as Map
-        : (_inventory ?? const {});
-    final items = inv['items'];
-    if (items is List && items.isNotEmpty) {
-      return items.take(8).map((item) => '- ${item.toString()}').join('\n');
+    if (_inventory.isNotEmpty) {
+      return _inventory.take(8).map((item) => '- ${item.toString()}').join('\n');
     }
     return 'No inventory items returned yet.';
   }
 
-  int _flagCount() {
-    final flags = _featureFlags?['flags'];
-    return flags is List ? flags.length : 0;
-  }
-
-  int _itemCount() {
-    final inv = (_inventory?['inventory'] is Map)
-        ? _inventory!['inventory'] as Map
-        : (_inventory ?? const {});
-    final items = inv['items'];
-    return items is List ? items.length : 0;
+  String _cloudSaveSummary() {
+    if (_cloudSave == null) return 'No cloud save returned yet.';
+    final payload = _cloudSave?['snapshot'] is Map
+        ? (_cloudSave!['snapshot'] as Map)['payload']
+        : _cloudSave?['payload'];
+    return payload == null ? _cloudSave.toString() : payload.toString();
   }
 
   int get _channelCount => _channels.length;

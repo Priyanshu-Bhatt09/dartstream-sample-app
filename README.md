@@ -1,13 +1,21 @@
-# Flappy Bird game
+# DS-SAMPLE APP
 
-DartStream is a Flutter web app that uses Firebase for authentication and a
-DartStream backend for the signed-in workspace.
+DS-SAMPLE APP is a Flutter web sample app built on Firebase authentication and the
+DartStream client SDK.
 
-The app has three main parts:
+It includes:
 
-- a Firebase login screen
-- a live dashboard that loads session, profile, inventory, flags, and channels
-- a simple Flappy Bird game with score, game over, and local high score
+- Firebase sign up / sign in
+- a post-login shell with live service screens
+- a Flappy Bird clone powered by live DartStream state
+- headless Dart smoke/deep-dive harnesses for the backend contracts
+
+## What was added from the review
+
+- Wired the game to DartStream flags, cloud-save, and reactive events
+- Added the public `dartstream_client` package to the Flutter app
+- Reintroduced CI for root analysis and Flutter analysis
+- Kept the app branded as Northstar instead of the original sample name
 
 ## Project layout
 
@@ -22,8 +30,8 @@ The app has three main parts:
 │   └── persistence_deepdive.dart
 ├── flutter_client/
 │   ├── lib/main.dart
+│   ├── lib/config.dart
 │   ├── lib/state/session.dart
-│   ├── lib/api/firebase_auth.dart
 │   ├── lib/api/dartstream.dart
 │   ├── lib/screens/login_screen.dart
 │   ├── lib/screens/shell_screen.dart
@@ -34,51 +42,44 @@ The app has three main parts:
 │   ├── lib/screens/reactive_screen.dart
 │   ├── lib/screens/persistence_screen.dart
 │   └── lib/game/flappy_bird_game.dart
+├── .github/workflows/ci.yml
 ├── .env.example
 └── README.md
 ```
 
-## How it works
+## Architecture
 
-1. The user signs in or creates an account with Firebase.
-2. Firebase returns an ID token.
-3. The app sends that token to DartStream.
-4. DartStream verifies the token and returns the app user and tenant IDs.
-5. The shell opens and the dashboard loads live backend data.
-6. The Flappy Bird game runs inside the dashboard and saves the best score
-   locally in the browser.
+- `main.dart` decides whether the app shows login or the signed-in shell.
+- `state/session.dart` owns auth state and creates the DartStream session.
+- `api/dartstream.dart` wraps the public `dartstream_client` SDK.
+- `screens/` contains the UI for the dashboard and service views.
+- `game/flappy_bird_game.dart` contains the Flappy Bird clone and its
+  integration with cloud-save, feature flags, and reactive telemetry.
 
-## What the dashboard shows
+## How the game uses DartStream
 
-The main dashboard bootstraps these live views:
+The Flappy Bird clone is not standalone anymore.
 
-- auth session summary
-- experience profile
-- platform feature flags
-- inventory
-- streaming channels
-- Flappy Bird score and high score
-
-The app keeps the dashboard intentionally simple so the important parts are
-easy to understand.
+- Feature flags change the gameplay settings
+- Cloud save restores and stores the best score
+- Reactive logging records milestone and game-over events
 
 ## Requirements
 
-- Dart SDK `^3.12`
-- Flutter `3.44+`
-- Chrome for the web client
-- A Firebase project with Email/Password authentication enabled
-- DartStream backend endpoints that trust the same Firebase project
+- Dart SDK `^3.6.0` for the root CLI harnesses
+- Flutter `3.44+` for the web client
+- A Firebase project with Email/Password enabled
+- A DartStream backend configured to trust that Firebase project
 
 ## Configuration
 
-Copy the example environment file and fill it in:
+Copy the template and fill in your local values:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Environment values used by the repo:
+Environment values:
 
 - `FIREBASE_API_KEY` - Firebase web API key
 - `TEST_EMAIL` / `TEST_PASSWORD` - credentials for the smoke CLI
@@ -88,13 +89,7 @@ Environment values used by the repo:
 - `API_REACTIVE` - reactive service host
 - `API_PERSISTENCE` - persistence service host
 
-For the Flutter web client, pass the Firebase key at build time:
-
-```powershell
---dart-define=FIREBASE_API_KEY=YOUR_KEY
-```
-
-## Run the smoke CLI
+## Run the root smoke CLI
 
 From the repo root:
 
@@ -103,10 +98,7 @@ dart pub get
 dart run bin/smoke.dart
 ```
 
-The smoke CLI signs in with Firebase, calls the auth backend, and then checks
-the live service endpoints.
-
-## Run the Flutter web client
+## Run the Flutter client
 
 From the repo root:
 
@@ -116,26 +108,26 @@ flutter pub get
 flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=YOUR_KEY
 ```
 
-If you use PowerShell, set `FIREBASE_API_KEY` in the current session before
-running Flutter, or paste the key directly into `--dart-define`.
+## Run analysis
 
-## Screens
+```powershell
+dart analyze bin
+cd flutter_client
+flutter analyze
+```
 
-- `LoginScreen` - create account / sign in with Firebase
-- `ShellScreen` - post-login navigation
-- `HomeScreen` - dashboard plus Flappy Bird clone
-- `ProfileScreen` - user profile and sessions
-- `FeatureFlagsScreen` - feature flags
-- `ExperienceScreen` - experience service views
-- `ReactiveScreen` - reactive events and resources
-- `PersistenceScreen` - persistence resources
+## CI
+
+The repo includes `.github/workflows/ci.yml` for:
+
+- `dart analyze bin`
+- `flutter analyze`
 
 ## Notes
 
-- The app is designed around a live backend, not mocks.
-- High score for the Flappy Bird game is stored locally in the browser.
-- The dashboard is intentionally minimal so it feels like a real app rather
-  than a demo shell.
+- The Flutter app now uses the public `dartstream_client` package.
+- The game saves the high score locally and in DartStream cloud-save.
+- The dashboard is intentionally simple so the architecture stays clear.
 
 ## License
 

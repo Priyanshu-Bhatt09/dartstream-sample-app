@@ -1,34 +1,87 @@
 import 'dart:math' as math;
 
-import 'package:flame/components.dart';
-import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/dartstream.dart';
+
+class FlappyBirdGameSettings {
+  const FlappyBirdGameSettings({
+    required this.gravity,
+    required this.pipeSpeed,
+    required this.pipeGap,
+    required this.spawnInterval,
+    required this.hardMode,
+  });
+
+  final double gravity;
+  final double pipeSpeed;
+  final double pipeGap;
+  final double spawnInterval;
+  final bool hardMode;
+
+  factory FlappyBirdGameSettings.fromFlags(List<dynamic> flags) {
+    bool enabled(String key) {
+      for (final flag in flags) {
+        if (flag is Map) {
+          final flagKey = (flag['key'] ??
+                  flag['flag_key'] ??
+                  flag['flagKey'] ??
+                  flag['name'] ??
+                  '')
+              .toString();
+          final on = flag['enabled'] == true || flag['status'] == 'active';
+          if (flagKey == key && on) return true;
+        } else if (flag.toString() == key) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final hardMode = enabled('flappy_hard_mode') || enabled('hard_mode');
+    final wideGap = enabled('flappy_wide_gap');
+    return FlappyBirdGameSettings(
+      gravity: hardMode ? 1080 : 920,
+      pipeSpeed: hardMode ? 235 : 190,
+      pipeGap: wideGap ? 195 : (hardMode ? 150 : 170),
+      spawnInterval: hardMode ? 1.25 : 1.45,
+      hardMode: hardMode,
+    );
+  }
+}
+
 class FlappyBirdGame extends FlameGame with TapCallbacks {
-  FlappyBirdGame({required this.onChanged});
+  FlappyBirdGame({
+    required this.api,
+    required this.userId,
+    required this.tenantId,
+    required this.settings,
+    required this.onChanged,
+  });
 
   static const _highScoreKey = 'northstar_flappy_high_score';
+  static const _slotKey = 'flappy';
   static const _birdXFraction = 0.24;
   static const _birdRadius = 15.0;
   static const _groundHeight = 76.0;
   static const _jumpVelocity = -330.0;
-  static const _gravity = 920.0;
-  static const _pipeSpeed = 190.0;
   static const _pipeWidth = 70.0;
-  static const _pipeGap = 170.0;
-  static const _spawnInterval = 1.45;
   static const _topPadding = 64.0;
   static const _pipeMargin = 64.0;
 
+  final DartstreamApi api;
+  final String userId;
+  final String tenantId;
+  final FlappyBirdGameSettings settings;
   final VoidCallback onChanged;
   final math.Random _rng = math.Random();
 
   SharedPreferences? _prefs;
   Bird _bird = Bird(position: Vector2.zero());
   final List<PipePair> _pipes = [];
-
   double _spawnTimer = 0;
   bool _gameOver = false;
   bool _ready = false;
@@ -47,30 +100,65 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   Future<void> onLoad() async {
     _prefs = await SharedPreferences.getInstance();
     _highScore = _prefs?.getInt(_highScoreKey) ?? 0;
+    await _restoreCloudSave();
     _ready = true;
     _reset();
     onChanged();
   }
 
+  Future<void> _restoreCloudSave() async {
+    try {
+      final snapshot = await api.loadSnapshot(
+        userId: userId,
+        tenantId: tenantId,
+        slotKey: _slotKey,
+      );
+      final payload = _payloadOf(snapshot);
+      final savedHighScore = _intValue(payload?['highScore'] ?? payload?['score']);
+      if (savedHighScore > _highScore) {
+        _highScore = savedHighScore;
+        await _prefs?.setInt(_highScoreKey, _highScore);
+      }
+    } catch (_) {
+      // Cloud-save is best effort. We still keep the local high score.
+    }
+  }
+
+  Map<String, dynamic>? _payloadOf(Map<String, dynamic>? snapshot) {
+    final snap = snapshot?['snapshot'];
+    if (snap is Map && snap['payload'] is Map<String, dynamic>) {
+      return snap['payload'] as Map<String, dynamic>;
+    }
+    if (snap is Map && snap['payload'] is Map) {
+      return Map<String, dynamic>.from(snap['payload'] as Map);
+    }
+    if (snapshot?['payload'] is Map<String, dynamic>) {
+      return snapshot?['payload'] as Map<String, dynamic>;
+    }
+    if (snapshot?['payload'] is Map) {
+      return Map<String, dynamic>.from(snapshot!['payload'] as Map);
+    }
+    return null;
+  }
+
+  int _intValue(dynamic value) =>
+      value is int ? value : int.tryParse(value?.toString() ?? '') ?? 0;
+
   @override
-  void onGameResize(Vector2 canvasSize) {
-    super.onGameResize(canvasSize);
-    _bird.position = Vector2(_birdX, canvasSize.y * 0.45);
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    _bird.position = Vector2(_birdX, size.y * 0.45);
   }
 
   double get _birdX => size.x * _birdXFraction;
   double get _groundTop => math.max(0, size.y - _groundHeight);
 
-  void _reset({bool keepHighScore = true}) {
+  void _reset() {
     _pipes.clear();
     _score = 0;
     _spawnTimer = 0;
     _gameOver = false;
     _bird = Bird(position: Vector2(_birdX, size.y * 0.45));
-    if (!keepHighScore) {
-      _highScore = 0;
-      _prefs?.remove(_highScoreKey);
-    }
   }
 
   void restart() {
@@ -98,27 +186,34 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   @override
   void update(double dt) {
     super.update(dt);
-    if (!_ready || _gameOver) {
-      return;
-    }
+    if (!_ready || _gameOver) return;
 
     _spawnTimer += dt;
-    if (_spawnTimer >= _spawnInterval) {
+    if (_spawnTimer >= settings.spawnInterval) {
       _spawnTimer = 0;
       _spawnPipePair();
     }
 
-    _bird.updatePhysics(dt, gravity: _gravity);
+    _bird.updatePhysics(dt, gravity: settings.gravity);
     _bird.position.x = _birdX;
 
     for (final pipe in _pipes) {
-      pipe.x -= _pipeSpeed * dt;
+      pipe.x -= settings.pipeSpeed * dt;
       if (!pipe.scored && pipe.x + _pipeWidth < _birdX) {
         pipe.scored = true;
         _score += 1;
         if (_score > _highScore) {
           _highScore = _score;
           _prefs?.setInt(_highScoreKey, _highScore);
+        }
+        if (_score % 5 == 0) {
+          unawaited(
+            api.logEvent(
+              tenantId: tenantId,
+              eventType: 'flappy.score.milestone',
+              payload: {'score': _score, 'hardMode': settings.hardMode},
+            ),
+          );
         }
         onChanged();
       }
@@ -127,19 +222,48 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
 
     if (_bird.hitsWorld(_groundTop, _birdRadius) ||
         _pipes.any((pipe) => pipe.collides(_bird, _groundTop))) {
-      _gameOver = true;
-      if (_score > _highScore) {
-        _highScore = _score;
-        _prefs?.setInt(_highScoreKey, _highScore);
-      }
-      onChanged();
+      _handleGameOver();
     }
+  }
+
+  void _handleGameOver() {
+    if (_gameOver) return;
+    _gameOver = true;
+    if (_score > _highScore) {
+      _highScore = _score;
+      _prefs?.setInt(_highScoreKey, _highScore);
+    }
+    unawaited(
+      api.saveSnapshot(
+        userId: userId,
+        tenantId: tenantId,
+        slotKey: _slotKey,
+        payload: {
+          'score': _score,
+          'highScore': _highScore,
+          'hardMode': settings.hardMode,
+          'savedAt': DateTime.now().toUtc().toIso8601String(),
+        },
+      ),
+    );
+    unawaited(
+      api.logEvent(
+        tenantId: tenantId,
+        eventType: 'flappy.game_over',
+        payload: {
+          'score': _score,
+          'highScore': _highScore,
+          'hardMode': settings.hardMode,
+        },
+      ),
+    );
+    onChanged();
   }
 
   void _spawnPipePair() {
     final gapTopLimit = math.max(
       _topPadding,
-      _groundTop - _pipeGap - _pipeMargin,
+      _groundTop - settings.pipeGap - _pipeMargin,
     );
     final gapTop = _topPadding +
         _rng.nextDouble() * math.max(1, gapTopLimit - _topPadding);
@@ -147,7 +271,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       PipePair(
         x: size.x + 8,
         gapTop: gapTop,
-        gapHeight: _pipeGap,
+        gapHeight: settings.pipeGap,
         pipeWidth: _pipeWidth,
       ),
     );
@@ -157,13 +281,11 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   void render(Canvas canvas) {
     super.render(canvas);
     _renderBackground(canvas);
-
     for (final pipe in _pipes) {
       pipe.render(canvas, _groundTop);
     }
     _bird.render(canvas);
     _renderHUD(canvas);
-
     if (_gameOver) {
       _renderOverlay(canvas);
     }
@@ -193,7 +315,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
     _drawText(
       canvas,
       'Score: $_score',
-      Offset(18, 18),
+      const Offset(18, 18),
       color: const Color(0xFF19324B),
       size: 22,
       weight: FontWeight.w800,
@@ -207,18 +329,15 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       weight: FontWeight.w700,
       align: TextAlign.right,
     );
-
-    if (!_gameOver) {
-      _drawText(
-        canvas,
-        'Tap to jump',
-        Offset(size.x / 2, size.y - 28),
-        color: const Color(0xFF42627A),
-        size: 16,
-        weight: FontWeight.w600,
-        align: TextAlign.center,
-      );
-    }
+    _drawText(
+      canvas,
+      settings.hardMode ? 'Hard mode' : 'Normal mode',
+      Offset(size.x / 2, size.y - 28),
+      color: const Color(0xFF42627A),
+      size: 16,
+      weight: FontWeight.w600,
+      align: TextAlign.center,
+    );
   }
 
   void _renderOverlay(Canvas canvas) {
@@ -267,11 +386,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(
-          color: color,
-          fontSize: size,
-          fontWeight: weight,
-        ),
+        style: TextStyle(color: color, fontSize: size, fontWeight: weight),
       ),
       textDirection: TextDirection.ltr,
       textAlign: align,
@@ -317,11 +432,7 @@ class Bird {
 
     canvas.drawCircle(Offset(position.x, position.y), radius, body);
     canvas.drawCircle(Offset(position.x, position.y), radius, outline);
-    canvas.drawCircle(
-      Offset(position.x + 5, position.y - 4),
-      2.4,
-      eye,
-    );
+    canvas.drawCircle(Offset(position.x + 5, position.y - 4), 2.4, eye);
     final beak = Paint()..color = const Color(0xFFF59E0B);
     final beakPath = Path()
       ..moveTo(position.x + radius - 2, position.y - 1)
@@ -348,8 +459,12 @@ class PipePair {
 
   Rect get _topRect => Rect.fromLTWH(x, 0, pipeWidth, gapTop);
 
-  Rect _bottomRect(double groundTop) =>
-      Rect.fromLTWH(x, gapTop + gapHeight, pipeWidth, groundTop - (gapTop + gapHeight));
+  Rect _bottomRect(double groundTop) => Rect.fromLTWH(
+        x,
+        gapTop + gapHeight,
+        pipeWidth,
+        groundTop - (gapTop + gapHeight),
+      );
 
   void render(Canvas canvas, double groundTop) {
     final fill = Paint()..color = const Color(0xFF2F9E44);
@@ -386,3 +501,5 @@ class PipePair {
     return birdRect.overlaps(topRect) || birdRect.overlaps(bottomRect);
   }
 }
+
+void unawaited(Future<dynamic> future) {}
