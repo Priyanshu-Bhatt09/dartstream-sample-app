@@ -32,3 +32,7 @@ jobs:
         run: flutter pub get
       - name: Analyze flutter client
         run: flutter analyze
+      - name: Run flutter tests
+        run: flutter test
+      - name: Build flutter web
+        run: flutter build web --dart-define=FIREBASE_API_KEY=dummy

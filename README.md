@@ -14,7 +14,9 @@ It includes:
 
 - Wired the game to DartStream flags, cloud-save, and reactive events
 - Added the public `dartstream_client` package to the Flutter app
-- Reintroduced CI for root analysis and Flutter analysis
+- Added SDK contract tests for cloud-save and reactive event envelopes
+- Expanded CI to run `flutter test` and `flutter build web`
+- Aligned the root Dart SDK floor with the Flutter client
 
 ## Project layout
 
@@ -65,7 +67,7 @@ The Flappy Bird clone is not standalone anymore.
 
 ## Requirements
 
-- Dart SDK `^3.6.0` for the root CLI harnesses
+- Dart SDK `^3.12.1` for the root CLI harnesses
 - Flutter `3.44+` for the web client
 - A Firebase project with Email/Password enabled
 - A DartStream backend configured to trust that Firebase project
@@ -113,6 +115,8 @@ flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=YOUR_KEY
 dart analyze bin
 cd flutter_client
 flutter analyze
+flutter test
+flutter build web --dart-define=FIREBASE_API_KEY=dummy
 ```
 
 ## CI
@@ -121,11 +125,15 @@ The repo includes `.github/workflows/ci.yml` for:
 
 - `dart analyze bin`
 - `flutter analyze`
+- `flutter test`
+- `flutter build web --dart-define=FIREBASE_API_KEY=dummy`
 
 ## Notes
 
 - The Flutter app now uses the public `dartstream_client` package.
 - The game saves the high score locally and in DartStream cloud-save.
+- The Flutter client includes contract tests for the save and event payloads.
+- `DartstreamApi.signup()` was removed because the app signs in and signs up via `Session`, not through a second API-level onboarding path.
 - The dashboard is intentionally simple so the architecture stays clear.
 
 ## License

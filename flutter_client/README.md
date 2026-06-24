@@ -8,6 +8,7 @@ It includes:
 - DartStream session bootstrapping
 - a signed-in shell with backend-connected screens
 - a Flappy Bird game on the dashboard
+- SDK contract tests for the cloud-save and reactive event envelopes
 
 ## Run
 
@@ -24,3 +25,4 @@ flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=YOUR_KEY
 - After sign-in, the shell opens.
 - The dashboard loads live backend data and shows the Flappy Bird game.
 - The game stores high score locally in the browser.
+- The game also persists cloud-save and gameplay telemetry through DartStream.

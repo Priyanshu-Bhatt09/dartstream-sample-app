@@ -2,12 +2,6 @@ import 'dart:typed_data';
 
 import 'package:dartstream_client/dartstream_client.dart' as ds;
 
-class SignupResult {
-  SignupResult({required this.userId, required this.tenantId});
-  final String userId;
-  final String tenantId;
-}
-
 class DartstreamApiException implements Exception {
   DartstreamApiException(this.statusCode, this.body, {this.uri});
   final int statusCode;
@@ -30,14 +24,6 @@ class DartstreamApi {
     projectId: 'northstar',
     environmentId: 'development',
   );
-
-  Future<SignupResult> signup() async {
-    if (session.userId.isEmpty || session.tenantId.isEmpty) {
-      final refreshed = await client.onboardFirebaseIdToken(session.idToken);
-      session = refreshed;
-    }
-    return SignupResult(userId: session.userId, tenantId: session.tenantId);
-  }
 
   Future<Map<String, dynamic>> me() =>
       _guard(() => client.me(session: session));
