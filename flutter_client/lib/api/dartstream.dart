@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:dartstream_client/dartstream_client.dart' as ds;
+import 'package:flutter/foundation.dart';
 
 class DartstreamApiException implements Exception {
   DartstreamApiException(this.statusCode, this.body, {this.uri});
@@ -15,10 +14,12 @@ class DartstreamApi {
   DartstreamApi({
     required this.client,
     required this.session,
+    this.onUnauthorized,
   });
 
   final ds.DartStreamClient client;
   ds.DartStreamSession session;
+  final VoidCallback? onUnauthorized;
 
   static const ds.DartStreamScope _scope = ds.DartStreamScope(
     projectId: 'northstar',
@@ -268,6 +269,9 @@ class DartstreamApi {
     try {
       return await action();
     } on ds.DartStreamApiException catch (e) {
+      if (e.statusCode == 401) {
+        onUnauthorized?.call();
+      }
       throw DartstreamApiException(
         e.statusCode,
         e.body,

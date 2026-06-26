@@ -1,7 +1,8 @@
 # DS-SAMPLE APP
 
-DS-SAMPLE APP is a Flutter web sample app built on Firebase authentication and the
-DartStream client SDK.
+DS-SAMPLE APP is a Flutter web sample app built on the public DartStream client
+SDK, with Firebase Email/Password auth as the upstream identity source for the
+dev backend.
 
 It includes:
 
@@ -10,13 +11,17 @@ It includes:
 - a Flappy Bird clone powered by live DartStream state
 - headless Dart smoke/deep-dive harnesses for the backend contracts
 
-## What was added from the review
+## What is already wired
 
-- Wired the game to DartStream flags, cloud-save, and reactive events
-- Added the public `dartstream_client` package to the Flutter app
-- Added SDK contract tests for cloud-save and reactive event envelopes
-- Expanded CI to run `flutter test` and `flutter build web`
-- Aligned the root Dart SDK floor with the Flutter client
+- The Flutter client uses the public `dartstream_client` package.
+- There is one auth path in the app: Firebase Email/Password through
+  `DartStreamClient.signIn` / `signUp`, which bootstraps a live DartStream
+  session.
+- The game is driven by live DartStream feature flags, cloud-save, and reactive
+  telemetry.
+- Cloud-save and event envelope contract tests are present in
+  `flutter_client/test/`.
+- CI runs analysis, tests, and a fresh web build with a dummy define.
 
 ## Project layout
 
@@ -51,8 +56,10 @@ It includes:
 ## Architecture
 
 - `main.dart` decides whether the app shows login or the signed-in shell.
-- `state/session.dart` owns auth state and creates the DartStream session.
-- `api/dartstream.dart` wraps the public `dartstream_client` SDK.
+- `state/session.dart` owns auth state, surfaces typed errors, and clears the
+  session on `401`.
+- `api/dartstream.dart` wraps the public `dartstream_client` SDK and forwards
+  unauthorized failures to the session layer.
 - `screens/` contains the UI for the dashboard and service views.
 - `game/flappy_bird_game.dart` contains the Flappy Bird clone and its
   integration with cloud-save, feature flags, and reactive telemetry.
@@ -61,14 +68,16 @@ It includes:
 
 The Flappy Bird clone is not standalone anymore.
 
-- Feature flags change the gameplay settings
-- Cloud save restores and stores the best score
-- Reactive logging records milestone and game-over events
+- Feature flags change the gameplay settings.
+- Cloud save restores and stores the best score using the required
+  `{'payload': ...}` envelope.
+- Reactive logging records milestone and game-over events with snake_case
+  `event_type`.
 
 ## Requirements
 
-- Dart SDK `^3.12.1` for the root CLI harnesses
-- Flutter `3.44+` for the web client
+- Dart SDK `>=3.12.0`
+- A current stable Flutter SDK that can build the web client
 - A Firebase project with Email/Password enabled
 - A DartStream backend configured to trust that Firebase project
 
@@ -133,7 +142,7 @@ The repo includes `.github/workflows/ci.yml` for:
 - The Flutter app now uses the public `dartstream_client` package.
 - The game saves the high score locally and in DartStream cloud-save.
 - The Flutter client includes contract tests for the save and event payloads.
-- `DartstreamApi.signup()` was removed because the app signs in and signs up via `Session`, not through a second API-level onboarding path.
+- The app uses one client SDK path and one session bootstrap path.
 - The dashboard is intentionally simple so the architecture stays clear.
 
 ## License

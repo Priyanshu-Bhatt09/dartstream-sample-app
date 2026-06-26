@@ -4,7 +4,7 @@ This folder contains the Northstar Flutter web client.
 
 It includes:
 
-- Firebase sign up / sign in
+- Firebase sign up / sign in through the DartStream dev backend
 - DartStream session bootstrapping
 - a signed-in shell with backend-connected screens
 - a Flappy Bird game on the dashboard

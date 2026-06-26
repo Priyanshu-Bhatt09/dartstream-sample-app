@@ -45,6 +45,7 @@ class Session extends ChangeNotifier {
       api = DartstreamApi(
         client: connection.client,
         session: connection.session,
+        onUnauthorized: signOut,
       );
       email = connection.session.email;
       userId = connection.session.userId;
@@ -58,6 +59,9 @@ class Session extends ChangeNotifier {
   }
 
   String _readable(Object e) {
+    if (e is ds.DartStreamApiException) {
+      return 'HTTP ${e.statusCode}: ${e.body}';
+    }
     final s = e.toString();
     return s.startsWith('DartStreamFirebaseAuthException: ')
         ? s.substring('DartStreamFirebaseAuthException: '.length)

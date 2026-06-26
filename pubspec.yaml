@@ -3,7 +3,7 @@ description: End-to-end smoke CLI for the DartStream dev API.
 publish_to: none
 
 environment:
-  sdk: ^3.12.1
+  sdk: ">=3.12.0 <4.0.0"
 
 dependencies:
   http: ^1.2.2
