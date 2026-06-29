@@ -10,6 +10,7 @@ It includes:
 - a post-login shell with live service screens
 - a Flappy Bird clone powered by live DartStream state
 - headless Dart smoke/deep-dive harnesses for the backend contracts
+- optional marketing/demo seeding for screenshots
 
 ## What is already wired
 

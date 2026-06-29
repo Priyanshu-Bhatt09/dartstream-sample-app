@@ -78,8 +78,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _v(List<String> keys) {
+    final user = _user['user'] is Map ? _user['user'] as Map : _user;
     for (final k in keys) {
-      if (_user[k] != null) return _user[k].toString();
+      final value = user[k] ?? _user[k];
+      if (value != null && value.toString().isNotEmpty) return value.toString();
+    }
+    final session = widget.session.sdkSession;
+    if (session != null) {
+      for (final k in keys) {
+        final raw = session.raw[k];
+        if (raw != null && raw.toString().isNotEmpty) return raw.toString();
+      }
+      if (keys.contains('id')) return session.userId;
+      if (keys.any((k) => k.contains('email'))) return session.email ?? '—';
     }
     return '—';
   }
@@ -216,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _profileCard() {
-    final email = _v(['email']);
+    final email = widget.session.email ?? _v(['email']);
     final initials = (email.isNotEmpty ? email[0] : '?').toUpperCase();
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -240,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(email,
                           style: Theme.of(context).textTheme.titleMedium),
-                      Text('Provider: ${_v(['providerType', 'provider_type'])}'),
+                      Text('Provider: ${_v(['providerType', 'provider_type', 'providerKey', 'provider_key'])}'),
                       Text('Status: ${_v(['status'])}'),
                     ],
                   ),
@@ -264,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const Divider(height: 24),
-            Text('User id: ${_v(['id'])}',
+            Text('User id: ${_v(['id', 'userId', 'user_id'])}',
                 style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 12),
             Row(

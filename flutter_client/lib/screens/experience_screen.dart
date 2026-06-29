@@ -117,9 +117,19 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     final p = (_profile?['profile'] is Map)
         ? _profile!['profile'] as Map
         : (_profile ?? const {});
+    final session = widget.session.sdkSession;
     String v(List<String> keys) {
+      if (session != null) {
+        for (final k in keys) {
+          final raw = session.raw[k];
+          if (raw != null && raw.toString().isNotEmpty) return raw.toString();
+        }
+        if (keys.contains('id')) return session.userId;
+        if (keys.any((k) => k.contains('email'))) return session.email ?? '—';
+      }
       for (final k in keys) {
-        if (p[k] != null) return p[k].toString();
+        final value = p[k] ?? (_profile?[k]);
+        if (value != null && value.toString().isNotEmpty) return value.toString();
       }
       return '—';
     }
@@ -128,8 +138,9 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Display name: ${v(['displayName', 'display_name'])}'),
-        Text('Provider: ${v(['providerKey', 'provider_key'])}'),
+        Text('Provider: ${v(['providerKey', 'provider_key', 'providerType', 'provider_type'])}'),
         Text('Mode: ${v(['mode'])}'),
+        Text('User id: ${v(['id', 'userId', 'user_id'])}'),
       ],
     ));
   }

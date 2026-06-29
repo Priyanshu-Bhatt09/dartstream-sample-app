@@ -7,9 +7,12 @@ import 'package:dartstream_client/dartstream_client.dart';
 class AppConfig {
   static const firebaseApiKey =
       String.fromEnvironment('FIREBASE_API_KEY');
+  static const marketingDemoSeed =
+      bool.fromEnvironment('MARKETING_DEMO_SEED', defaultValue: false);
 
   /// Whether a key was actually injected; the login flow surfaces this.
   static bool get hasFirebaseApiKey => firebaseApiKey.isNotEmpty;
+  static bool get hasMarketingDemoSeed => marketingDemoSeed;
 
   static DartStreamConfig get dartStreamConfig =>
       DartStreamConfig.dev(firebaseApiKey: firebaseApiKey);

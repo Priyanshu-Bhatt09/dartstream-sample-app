@@ -359,11 +359,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final profile = (_profile?['profile'] is Map)
         ? _profile!['profile'] as Map
         : (_profile ?? const {});
+    final session = widget.session.sdkSession;
     final parts = <String>[];
-    for (final key in const ['displayName', 'providerKey', 'mode']) {
-      if (profile[key] != null) {
-        parts.add('$key: ${profile[key]}');
+    for (final key in const ['displayName', 'providerKey', 'mode', 'id']) {
+      final value = profile[key] ?? _profile?[key];
+      if (value != null) {
+        parts.add('$key: $value');
       }
+    }
+    if (parts.isEmpty && session != null) {
+      parts.add('displayName: ${widget.session.email ?? session.email ?? 'unknown'}');
+      parts.add('providerKey: ${session.raw['providerKey'] ?? session.raw['provider_type'] ?? 'session'}');
+      parts.add('mode: ${session.raw['mode'] ?? 'live'}');
+      parts.add('id: ${session.userId}');
     }
     return parts.isEmpty ? _profile.toString() : parts.join('\n');
   }
