@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../state/session.dart';
+import '../ui/retro_style.dart';
 
 enum AuthMode { signUp, signIn }
 
@@ -73,136 +74,130 @@ class _LoginScreenState extends State<LoginScreen> {
     final busy = widget.session.status == SessionStatus.signingIn;
     final hasKey = AppConfig.hasFirebaseApiKey;
     final error = _localError ?? widget.session.errorMessage;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Northstar')),
-      body: Center(
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    _isSignUp ? 'Create your account' : 'Welcome back',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Sign in with Firebase, then open your live workspace.',
-                    textAlign: TextAlign.center,
-                  ),
-                  if (!hasKey) ...[
-                    const SizedBox(height: 16),
-                    _Banner(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      textColor: Theme.of(context).colorScheme.onErrorContainer,
-                      text: 'No Firebase API key injected. Run with '
-                          '--dart-define=FIREBASE_API_KEY=<key> (see README).',
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _PillRow(
-                    labels: const [
-                      'Firebase auth',
-                      'DartStream session',
-                      'Live dashboard',
+    return RetroBackdrop(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Northstar')),
+        body: Center(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: RetroPanel(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _isSignUp ? 'create your save file' : 'welcome back, player',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Sign in to enter the live dashboard and manage your game world.',
+                        textAlign: TextAlign.center,
+                      ),
+                      if (!hasKey) ...[
+                        const SizedBox(height: 16),
+                        _Banner(
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.22),
+                          textColor: Theme.of(context).colorScheme.onError,
+                          text: 'No Firebase API key injected. Use --dart-define=FIREBASE_API_KEY=<key>.',
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      _PillRow(
+                        labels: const [
+                          'pixel retro ui',
+                          'firebase auth',
+                          'live dashboard',
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SegmentedButton<AuthMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: AuthMode.signUp,
+                            label: Text('Create'),
+                            icon: Icon(Icons.person_add_alt),
+                          ),
+                          ButtonSegment(
+                            value: AuthMode.signIn,
+                            label: Text('Login'),
+                            icon: Icon(Icons.login),
+                          ),
+                        ],
+                        selected: {_mode},
+                        onSelectionChanged: busy ? null : (s) => _setMode(s.first),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          hintText: 'you@example.com',
+                        ),
+                        enabled: !busy,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _password,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          helperText: 'At least 6 characters',
+                        ),
+                        obscureText: true,
+                        enabled: !busy,
+                        onSubmitted: (_) => _isSignUp ? null : _submit(),
+                      ),
+                      if (_isSignUp) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _confirm,
+                          decoration: const InputDecoration(
+                            labelText: 'Confirm password',
+                          ),
+                          obscureText: true,
+                          enabled: !busy,
+                          onSubmitted: (_) => _submit(),
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      FilledButton(
+                        onPressed: busy || !hasKey ? null : _submit,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            busy ? 'Please wait...' : _isSignUp ? 'Create Account' : 'Sign In',
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => _setMode(
+                                  _isSignUp ? AuthMode.signIn : AuthMode.signUp,
+                                ),
+                        child: Text(
+                          _isSignUp ? 'Already have an account? Sign in' : 'No account? Create one',
+                        ),
+                      ),
+                      if (error != null) ...[
+                        const SizedBox(height: 8),
+                        _Banner(
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.22),
+                          textColor: Theme.of(context).colorScheme.onError,
+                          text: error,
+                        ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  SegmentedButton<AuthMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: AuthMode.signUp,
-                        label: Text('Create Account'),
-                        icon: Icon(Icons.person_add_alt),
-                      ),
-                      ButtonSegment(
-                        value: AuthMode.signIn,
-                        label: Text('Sign In'),
-                        icon: Icon(Icons.login),
-                      ),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: busy
-                        ? null
-                        : (s) => _setMode(s.first),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'you@example.com',
-                      border: OutlineInputBorder(),
-                    ),
-                    enabled: !busy,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _password,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      helperText: 'At least 6 characters',
-                      border: OutlineInputBorder(),
-                    ),
-                    obscureText: true,
-                    enabled: !busy,
-                    onSubmitted: (_) => _isSignUp ? null : _submit(),
-                  ),
-                  if (_isSignUp) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _confirm,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm password',
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                      enabled: !busy,
-                      onSubmitted: (_) => _submit(),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: busy || !hasKey ? null : _submit,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        busy
-                            ? 'Please wait…'
-                            : _isSignUp
-                                ? 'Create Account'
-                                : 'Sign In',
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => _setMode(
-                              _isSignUp ? AuthMode.signIn : AuthMode.signUp,
-                            ),
-                    child: Text(
-                      _isSignUp
-                          ? 'Already have an account? Sign in'
-                          : "Don't have an account? Create one",
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 8),
-                    _Banner(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      textColor: Theme.of(context).colorScheme.onErrorContainer,
-                      text: error,
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
@@ -223,13 +218,7 @@ class _PillRow extends StatelessWidget {
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-      children: [
-        for (final label in labels)
-          Chip(
-            label: Text(label),
-            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
-      ],
+      children: [for (final label in labels) Chip(label: Text(label))],
     );
   }
 }
@@ -252,7 +241,8 @@ class _Banner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.zero,
+        border: Border.all(color: textColor.withValues(alpha: 0.45), width: 2),
       ),
       child: Text(
         text,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell_screen.dart';
 import 'state/session.dart';
+import 'ui/retro_style.dart';
 
 void main() => runApp(const DartstreamApp());
 
@@ -30,23 +31,10 @@ class _DartstreamAppState extends State<DartstreamApp> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1B6EF3),
-      brightness: Brightness.light,
-    );
     return MaterialApp(
       title: 'Northstar',
-      theme: ThemeData(
-        colorScheme: scheme,
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF6F8FC),
-        appBarTheme: AppBarTheme(
-          backgroundColor: scheme.surface,
-          surfaceTintColor: scheme.surface,
-          foregroundColor: scheme.onSurface,
-          centerTitle: false,
-        ),
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: buildRetroTheme(),
       home: _session.status == SessionStatus.signedIn
           ? ShellScreen(session: _session)
           : LoginScreen(session: _session),

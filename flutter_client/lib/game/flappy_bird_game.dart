@@ -67,7 +67,9 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   static const _birdXFraction = 0.24;
   static const _birdRadius = 15.0;
   static const _groundHeight = 76.0;
-  static const _jumpVelocity = -330.0;
+  static const _jumpVelocity = -290.0;
+  static const _maxFallVelocity = 520.0;
+  static const _maxRiseVelocity = -420.0;
   static const _pipeWidth = 70.0;
   static const _topPadding = 64.0;
   static const _pipeMargin = 64.0;
@@ -94,7 +96,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   int get highScore => _highScore;
 
   @override
-  Color backgroundColor() => const Color(0xFFBEE9FF);
+  Color backgroundColor() => const Color(0xFF101814);
 
   @override
   Future<void> onLoad() async {
@@ -147,7 +149,11 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    _bird.position = Vector2(_birdX, size.y * 0.45);
+    if (_ready) {
+      _bird.position = Vector2(_birdX, _bird.position.y.clamp(_birdRadius, _groundTop - _birdRadius));
+    } else {
+      _bird.position = Vector2(_birdX, size.y * 0.45);
+    }
   }
 
   double get _birdX => size.x * _birdXFraction;
@@ -170,6 +176,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   void _jump() {
     if (_gameOver) return;
     _bird.velocityY = _jumpVelocity;
+    _bird.position.y = math.max(_birdRadius, _bird.position.y - 2);
   }
 
   @override
@@ -195,6 +202,10 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
     }
 
     _bird.updatePhysics(dt, gravity: settings.gravity);
+    _bird.clampVelocity(
+      minVelocity: _maxRiseVelocity,
+      maxVelocity: _maxFallVelocity,
+    );
     _bird.position.x = _birdX;
 
     for (final pipe in _pipes) {
@@ -292,19 +303,19 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   }
 
   void _renderBackground(Canvas canvas) {
-    final sky = Paint()..color = const Color(0xFFBEE9FF);
+    final sky = Paint()..color = const Color(0xFF101814);
     canvas.drawRect(Offset.zero & Size(size.x, size.y), sky);
 
-    final sunPaint = Paint()..color = const Color(0xFFFFD66B);
-    canvas.drawCircle(Offset(size.x * 0.83, size.y * 0.16), 30, sunPaint);
+    final moonPaint = Paint()..color = const Color(0xFF5DF2B7);
+    canvas.drawRect(Rect.fromLTWH(size.x * 0.8, size.y * 0.12, 34, 34), moonPaint);
 
-    final groundPaint = Paint()..color = const Color(0xFF7ED957);
+    final groundPaint = Paint()..color = const Color(0xFF22372D);
     canvas.drawRect(
       Rect.fromLTWH(0, _groundTop, size.x, size.y - _groundTop),
       groundPaint,
     );
 
-    final groundShadow = Paint()..color = const Color(0xFF4A8E2D);
+    final groundShadow = Paint()..color = const Color(0xFF5DF2B7);
     canvas.drawRect(
       Rect.fromLTWH(0, _groundTop, size.x, 6),
       groundShadow,
@@ -316,7 +327,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Score: $_score',
       const Offset(18, 18),
-      color: const Color(0xFF19324B),
+      color: const Color(0xFFF4FFE9),
       size: 22,
       weight: FontWeight.w800,
     );
@@ -324,7 +335,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'High: $_highScore',
       Offset(size.x - 18, 18),
-      color: const Color(0xFF19324B),
+      color: const Color(0xFFF4FFE9),
       size: 18,
       weight: FontWeight.w700,
       align: TextAlign.right,
@@ -333,7 +344,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       settings.hardMode ? 'Hard mode' : 'Normal mode',
       Offset(size.x / 2, size.y - 28),
-      color: const Color(0xFF42627A),
+      color: const Color(0xFFB6CBB8),
       size: 16,
       weight: FontWeight.w600,
       align: TextAlign.center,
@@ -349,7 +360,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Game Over',
       Offset(size.x / 2, size.y * 0.36),
-      color: Colors.white,
+      color: const Color(0xFFFFD166),
       size: 32,
       weight: FontWeight.w900,
       align: TextAlign.center,
@@ -358,7 +369,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Tap to restart',
       Offset(size.x / 2, size.y * 0.46),
-      color: Colors.white,
+      color: const Color(0xFFF4FFE9),
       size: 18,
       weight: FontWeight.w600,
       align: TextAlign.center,
@@ -367,7 +378,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Best: $_highScore',
       Offset(size.x / 2, size.y * 0.54),
-      color: Colors.white,
+      color: const Color(0xFF5DF2B7),
       size: 16,
       weight: FontWeight.w600,
       align: TextAlign.center,
@@ -413,6 +424,10 @@ class Bird {
     position.y += velocityY * dt;
   }
 
+  void clampVelocity({required double minVelocity, required double maxVelocity}) {
+    velocityY = velocityY.clamp(minVelocity, maxVelocity).toDouble();
+  }
+
   bool hitsWorld(double groundTop, double birdRadius) {
     final topHit = position.y - birdRadius <= 0;
     final bottomHit = position.y + birdRadius >= groundTop;
@@ -429,7 +444,12 @@ class Bird {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     final eye = Paint()..color = const Color(0xFF1F2937);
+    final angle = (velocityY / 520.0).clamp(-0.65, 0.55);
 
+    canvas.save();
+    canvas.translate(position.x, position.y);
+    canvas.rotate(angle);
+    canvas.translate(-position.x, -position.y);
     canvas.drawCircle(Offset(position.x, position.y), radius, body);
     canvas.drawCircle(Offset(position.x, position.y), radius, outline);
     canvas.drawCircle(Offset(position.x + 5, position.y - 4), 2.4, eye);
@@ -440,6 +460,7 @@ class Bird {
       ..lineTo(position.x + radius - 2, position.y + 6)
       ..close();
     canvas.drawPath(beakPath, beak);
+    canvas.restore();
   }
 }
 
