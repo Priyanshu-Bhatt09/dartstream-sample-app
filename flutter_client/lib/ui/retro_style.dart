@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
 
 class RetroPalette {
-  static const bg = Color(0xFF101814);
-  static const panel = Color(0xFF1A2A23);
-  static const panelAlt = Color(0xFF22372D);
-  static const border = Color(0xFF5DF2B7);
-  static const borderSoft = Color(0xFF2D6E57);
-  static const accent = Color(0xFFFFD166);
-  static const text = Color(0xFFF4FFE9);
-  static const textMuted = Color(0xFFB6CBB8);
-  static const danger = Color(0xFFFF6B6B);
+  static const bg = Color(0xFFF6F8FC);
+  static const panel = Color(0xFFFFFFFF);
+  static const panelAlt = Color(0xFFEAF2FF);
+  static const border = Color(0xFF4F7DFF);
+  static const borderSoft = Color(0xFFB7C5E5);
+  static const accent = Color(0xFFFFB347);
+  static const text = Color(0xFF1F2430);
+  static const textMuted = Color(0xFF5F6B85);
+  static const danger = Color(0xFFE85D75);
 }
 
 ThemeData buildRetroTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: RetroPalette.accent,
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     surface: RetroPalette.panel,
   ).copyWith(
-    primary: RetroPalette.accent,
-    secondary: RetroPalette.border,
+    primary: RetroPalette.border,
+    secondary: RetroPalette.accent,
     surface: RetroPalette.panel,
     error: RetroPalette.danger,
   );
 
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     colorScheme: scheme,
     scaffoldBackgroundColor: RetroPalette.bg,
     canvasColor: RetroPalette.bg,
@@ -89,7 +89,7 @@ ThemeData buildRetroTheme() {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: RetroPalette.bg.withValues(alpha: 0.92),
+      backgroundColor: RetroPalette.panel.withValues(alpha: 0.94),
       indicatorColor: RetroPalette.accent.withValues(alpha: 0.18),
       labelTextStyle: WidgetStateProperty.all(
         const TextStyle(
@@ -101,15 +101,15 @@ ThemeData buildRetroTheme() {
     ),
     navigationRailTheme: const NavigationRailThemeData(
       backgroundColor: RetroPalette.bg,
-      selectedIconTheme: IconThemeData(color: RetroPalette.accent),
+      selectedIconTheme: IconThemeData(color: RetroPalette.border),
       unselectedIconTheme: IconThemeData(color: RetroPalette.textMuted),
-      selectedLabelTextStyle: TextStyle(fontFamily: 'monospace', color: RetroPalette.accent, fontWeight: FontWeight.w700),
+      selectedLabelTextStyle: TextStyle(fontFamily: 'monospace', color: RetroPalette.border, fontWeight: FontWeight.w700),
       unselectedLabelTextStyle: TextStyle(fontFamily: 'monospace', color: RetroPalette.textMuted),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: RetroPalette.accent,
-        foregroundColor: Colors.black,
+        backgroundColor: RetroPalette.border,
+        foregroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
           side: BorderSide(color: Colors.black, width: 2),
@@ -119,7 +119,7 @@ ThemeData buildRetroTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: RetroPalette.text,
+        foregroundColor: RetroPalette.border,
         side: const BorderSide(color: RetroPalette.border, width: 2),
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         textStyle: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700),
@@ -145,7 +145,7 @@ class RetroBackdrop extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF101814), Color(0xFF13231B), Color(0xFF0D120F)],
+          colors: [Color(0xFFF6F8FC), Color(0xFFEFF4FF), Color(0xFFFDF7EA)],
         ),
       ),
       child: Stack(
@@ -159,9 +159,9 @@ class RetroBackdrop extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withValues(alpha: 0.04),
+                      Colors.white.withValues(alpha: 0.45),
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.08),
+                      Colors.black.withValues(alpha: 0.03),
                     ],
                   ),
                 ),
@@ -193,7 +193,7 @@ class RetroPanel extends StatelessWidget {
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: RetroPalette.panel.withValues(alpha: 0.96),
+        color: RetroPalette.panel.withValues(alpha: 0.98),
         border: Border.all(color: RetroPalette.borderSoft, width: 2),
       ),
       child: child,
@@ -204,7 +204,7 @@ class RetroPanel extends StatelessWidget {
 class _PixelPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF5DF2B7).withValues(alpha: 0.05);
+    final paint = Paint()..color = const Color(0xFF4F7DFF).withValues(alpha: 0.06);
     for (double y = 0; y < size.height; y += 18) {
       for (double x = (y ~/ 18).isEven ? 0 : 9; x < size.width; x += 18) {
         canvas.drawRect(Rect.fromLTWH(x, y, 4, 4), paint);

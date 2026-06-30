@@ -32,7 +32,7 @@ class _DartstreamAppState extends State<DartstreamApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Northstar',
+      title: 'Flappy Bird Game',
       debugShowCheckedModeBanner: false,
       theme: buildRetroTheme(),
       home: _session.status == SessionStatus.signedIn

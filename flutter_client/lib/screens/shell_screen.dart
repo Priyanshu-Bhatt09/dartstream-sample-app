@@ -39,7 +39,7 @@ class _ShellScreenState extends State<ShellScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('Northstar - ${_features[_index].label}'),
+          title: Text('Flappy Bird Game - ${_features[_index].label}'),
           actions: [
             if (session.email != null)
               Padding(

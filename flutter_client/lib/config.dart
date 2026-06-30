@@ -1,6 +1,6 @@
 import 'package:dartstream_client/dartstream_client.dart';
 
-/// Runtime config for the Northstar Flutter app.
+/// Runtime config for the Flappy Bird Game Flutter app.
 ///
 /// `FIREBASE_API_KEY` is a public web key for the Firebase project trusted by
 /// DartStream. It is injected at build time through `--dart-define`.

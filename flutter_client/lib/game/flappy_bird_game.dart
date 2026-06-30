@@ -303,19 +303,21 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
   }
 
   void _renderBackground(Canvas canvas) {
-    final sky = Paint()..color = const Color(0xFF101814);
+    final sky = Paint()..color = const Color(0xFF87CEEB);
     canvas.drawRect(Offset.zero & Size(size.x, size.y), sky);
 
-    final moonPaint = Paint()..color = const Color(0xFF5DF2B7);
-    canvas.drawRect(Rect.fromLTWH(size.x * 0.8, size.y * 0.12, 34, 34), moonPaint);
+    final cloudPaint = Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: 0.72);
+    canvas.drawOval(Rect.fromLTWH(size.x * 0.74, size.y * 0.12, 46, 28), cloudPaint);
+    canvas.drawOval(Rect.fromLTWH(size.x * 0.8, size.y * 0.1, 38, 24), cloudPaint);
+    canvas.drawOval(Rect.fromLTWH(size.x * 0.18, size.y * 0.16, 54, 30), cloudPaint);
 
-    final groundPaint = Paint()..color = const Color(0xFF22372D);
+    final groundPaint = Paint()..color = const Color(0xFF7ED957);
     canvas.drawRect(
       Rect.fromLTWH(0, _groundTop, size.x, size.y - _groundTop),
       groundPaint,
     );
 
-    final groundShadow = Paint()..color = const Color(0xFF5DF2B7);
+    final groundShadow = Paint()..color = const Color(0xFF4A8E2D);
     canvas.drawRect(
       Rect.fromLTWH(0, _groundTop, size.x, 6),
       groundShadow,
@@ -327,7 +329,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Score: $_score',
       const Offset(18, 18),
-      color: const Color(0xFFF4FFE9),
+      color: const Color(0xFF19324B),
       size: 22,
       weight: FontWeight.w800,
     );
@@ -335,7 +337,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'High: $_highScore',
       Offset(size.x - 18, 18),
-      color: const Color(0xFFF4FFE9),
+      color: const Color(0xFF19324B),
       size: 18,
       weight: FontWeight.w700,
       align: TextAlign.right,
@@ -344,7 +346,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       settings.hardMode ? 'Hard mode' : 'Normal mode',
       Offset(size.x / 2, size.y - 28),
-      color: const Color(0xFFB6CBB8),
+      color: const Color(0xFF42627A),
       size: 16,
       weight: FontWeight.w600,
       align: TextAlign.center,
@@ -360,7 +362,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Game Over',
       Offset(size.x / 2, size.y * 0.36),
-      color: const Color(0xFFFFD166),
+      color: Colors.white,
       size: 32,
       weight: FontWeight.w900,
       align: TextAlign.center,
@@ -369,7 +371,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Tap to restart',
       Offset(size.x / 2, size.y * 0.46),
-      color: const Color(0xFFF4FFE9),
+      color: Colors.white,
       size: 18,
       weight: FontWeight.w600,
       align: TextAlign.center,
@@ -378,7 +380,7 @@ class FlappyBirdGame extends FlameGame with TapCallbacks {
       canvas,
       'Best: $_highScore',
       Offset(size.x / 2, size.y * 0.54),
-      color: const Color(0xFF5DF2B7),
+      color: Colors.white,
       size: 16,
       weight: FontWeight.w600,
       align: TextAlign.center,

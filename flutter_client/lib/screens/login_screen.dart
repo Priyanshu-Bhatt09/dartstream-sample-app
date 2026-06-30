@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return RetroBackdrop(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Northstar')),
+        appBar: AppBar(title: const Text('Flappy Bird Game')),
         body: Center(
           child: SingleChildScrollView(
             child: ConstrainedBox(
