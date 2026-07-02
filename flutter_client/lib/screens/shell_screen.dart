@@ -5,6 +5,7 @@ import '../ui/retro_style.dart';
 import 'experience_screen.dart';
 import 'feature_flags_screen.dart';
 import 'home_screen.dart';
+import 'intellitoggle_screen.dart';
 import 'persistence_screen.dart';
 import 'profile_screen.dart';
 import 'reactive_screen.dart';
@@ -24,6 +25,7 @@ class _ShellScreenState extends State<ShellScreen> {
     _Feature(label: 'Dashboard', icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, builder: () => HomeScreen(session: widget.session)),
     _Feature(label: 'Profile', icon: Icons.account_circle_outlined, selectedIcon: Icons.account_circle, builder: () => ProfileScreen(session: widget.session)),
     _Feature(label: 'Platform', icon: Icons.flag_outlined, selectedIcon: Icons.flag, builder: () => FeatureFlagsScreen(session: widget.session)),
+    _Feature(label: 'IntelliToggle', icon: Icons.toggle_off_outlined, selectedIcon: Icons.toggle_on, builder: () => IntelliToggleScreen(session: widget.session)),
     _Feature(label: 'Experience', icon: Icons.person_outline, selectedIcon: Icons.person, builder: () => ExperienceScreen(session: widget.session)),
     _Feature(label: 'Reactive', icon: Icons.bolt_outlined, selectedIcon: Icons.bolt, builder: () => ReactiveScreen(session: widget.session)),
     _Feature(label: 'Persistence', icon: Icons.storage_outlined, selectedIcon: Icons.storage, builder: () => PersistenceScreen(session: widget.session)),

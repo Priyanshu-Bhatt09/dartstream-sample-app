@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../api/dartstream.dart';
+import '../game/flappy_bird_game.dart';
 import '../state/session.dart';
 
-/// Live read-only view of ds-experience-orchestration: profile, inventory,
-/// active sessions, and the connector catalog.
+/// Game-focused live view: profile, active Flappy Bird settings, cloud save,
+/// and gameplay telemetry. This screen intentionally avoids unrelated demo
+/// concepts like inventory or connectors.
 class ExperienceScreen extends StatefulWidget {
   const ExperienceScreen({super.key, required this.session});
   final Session session;
@@ -21,9 +23,17 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   bool _loading = true;
   Object? _error;
   Map<String, dynamic>? _profile;
-  List<dynamic> _inventory = const [];
+  Map<String, dynamic>? _cloudSave;
+  List<dynamic> _flags = const [];
+  List<dynamic> _events = const [];
   List<dynamic> _sessions = const [];
-  Map<String, dynamic>? _connectors;
+  FlappyBirdGameSettings _gameSettings = const FlappyBirdGameSettings(
+    gravity: 920,
+    pipeSpeed: 190,
+    pipeGap: 170,
+    spawnInterval: 1.45,
+    hardMode: false,
+  );
 
   @override
   void initState() {
@@ -39,29 +49,31 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     try {
       final results = await Future.wait([
         _api.profile(userId: _userId, tenantId: _tenantId),
-        _api.inventory(userId: _userId, tenantId: _tenantId),
+        _api.loadSnapshot(userId: _userId, tenantId: _tenantId, slotKey: 'flappy'),
+        _api.listFeatureFlags(tenantId: _tenantId),
         _api.activeSessions(userId: _userId, tenantId: _tenantId),
-        _api.connectors(tenantId: _tenantId),
       ]);
-      final inv = results[1] as Map<String, dynamic>;
-      final invMap = (inv['inventory'] is Map ? inv['inventory'] : inv) as Map?;
-      if (mounted) {
-        setState(() {
-          _profile = results[0] as Map<String, dynamic>;
-          _inventory =
-              (invMap?['items'] is List) ? invMap!['items'] as List : const [];
-          _sessions = results[2] as List<dynamic>;
-          _connectors = results[3] as Map<String, dynamic>;
-          _loading = false;
-        });
-      }
+
+      final flags = results[2] as List<dynamic>;
+      final settings = FlappyBirdGameSettings.fromFlags(flags);
+      final snapshot = results[1] as Map<String, dynamic>?;
+
+      if (!mounted) return;
+      setState(() {
+        _profile = results[0] as Map<String, dynamic>;
+        _cloudSave = snapshot;
+        _flags = flags;
+        _sessions = results[3] as List<dynamic>;
+        _gameSettings = settings;
+        _events = const [];
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e;
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
     }
   }
 
@@ -75,8 +87,10 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Could not load experience data: $_error',
-                  textAlign: TextAlign.center),
+              Text(
+                'Could not load the game view:\n$_error',
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 12),
               FilledButton(onPressed: _load, child: const Text('Retry')),
             ],
@@ -84,15 +98,16 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         ),
       );
     }
+
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _profileCard(),
-          _inventoryCard(),
-          _sessionsCard(),
-          _connectorsCard(),
+          _gameStateCard(),
+          _cloudSaveCard(),
+          _activityCard(),
         ],
       ),
     );
@@ -114,103 +129,103 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       );
 
   Widget _profileCard() {
-    final p = (_profile?['profile'] is Map)
+    final profile = (_profile?['profile'] is Map)
         ? _profile!['profile'] as Map
         : (_profile ?? const {});
-    final session = widget.session.sdkSession;
-    String v(List<String> keys) {
-      if (session != null) {
-        for (final k in keys) {
-          final raw = session.raw[k];
-          if (raw != null && raw.toString().isNotEmpty) return raw.toString();
-        }
-        if (keys.contains('id')) return session.userId;
-        if (keys.any((k) => k.contains('email'))) return session.email ?? '—';
-      }
-      for (final k in keys) {
-        final value = p[k] ?? (_profile?[k]);
-        if (value != null && value.toString().isNotEmpty) return value.toString();
-      }
-      return '—';
-    }
-
-    return _card('Profile', Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Display name: ${v(['displayName', 'display_name'])}'),
-        Text('Provider: ${v(['providerKey', 'provider_key', 'providerType', 'provider_type'])}'),
-        Text('Mode: ${v(['mode'])}'),
-        Text('User id: ${v(['id', 'userId', 'user_id'])}'),
-      ],
-    ));
+    return _card(
+      'Player profile',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Email: ${widget.session.email ?? 'unknown'}'),
+          Text('User id: ${widget.session.userId ?? 'unknown'}'),
+          Text('Tenant id: ${widget.session.tenantId ?? 'unknown'}'),
+          Text('Display name: ${profile['displayName'] ?? profile['display_name'] ?? '—'}'),
+        ],
+      ),
+    );
   }
 
-  Widget _inventoryCard() => _card(
-        'Inventory (${_inventory.length})',
-        _inventory.isEmpty
-            ? const Text('(empty)')
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final item in _inventory) Text('• ${_item(item)}'),
-                ],
-              ),
-      );
-
-  String _item(dynamic item) {
-    if (item is Map) {
-      final id = item['itemId'] ?? item['id'] ?? '?';
-      final qty = item['quantity'] ?? 1;
-      final type = item['itemType'] ?? '';
-      return '$id ×$qty${type.toString().isEmpty ? '' : '  ($type)'}';
-    }
-    return item.toString();
+  Widget _gameStateCard() {
+    return _card(
+      'Flappy Bird state',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Hard mode: ${_gameSettings.hardMode ? 'on' : 'off'}'),
+          Text('Gravity: ${_gameSettings.gravity}'),
+          Text('Pipe speed: ${_gameSettings.pipeSpeed}'),
+          Text('Pipe gap: ${_gameSettings.pipeGap}'),
+          Text('Spawn interval: ${_gameSettings.spawnInterval}s'),
+          Text('Feature flags loaded: ${_flags.length}'),
+        ],
+      ),
+    );
   }
 
-  Widget _sessionsCard() => _card(
-        'Active sessions (${_sessions.length})',
-        _sessions.isEmpty
-            ? const Text('(none)')
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final s in _sessions)
-                    Text('• ${_session(s)}'),
-                ],
-              ),
-      );
+  Widget _cloudSaveCard() {
+    final payload = _payloadOf(_cloudSave);
+    final highScore = payload?['highScore'] ?? payload?['score'] ?? 0;
+    final savedAt = payload?['savedAt'] ?? 'n/a';
+    return _card(
+      'Cloud save',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('High score: $highScore'),
+          Text('Saved at: $savedAt'),
+          const SizedBox(height: 8),
+          Text(payload == null ? 'No cloud save returned yet.' : payload.toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _activityCard() {
+    return _card(
+      'Game activity',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Active sessions: ${_sessions.length}'),
+          const SizedBox(height: 4),
+          if (_sessions.isEmpty)
+            const Text('No active sessions returned yet.')
+          else
+            for (final s in _sessions.take(6)) Text('• ${_session(s)}'),
+          const SizedBox(height: 12),
+          Text('Recent gameplay events: ${_events.length}'),
+          const Text(
+            'Gameplay telemetry is written from the game itself, so this view stays focused on the Flappy Bird loop.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic>? _payloadOf(Map<String, dynamic>? snapshot) {
+    final snap = snapshot?['snapshot'];
+    if (snap is Map && snap['payload'] is Map<String, dynamic>) {
+      return snap['payload'] as Map<String, dynamic>;
+    }
+    if (snap is Map && snap['payload'] is Map) {
+      return Map<String, dynamic>.from(snap['payload'] as Map);
+    }
+    if (snapshot?['payload'] is Map<String, dynamic>) {
+      return snapshot?['payload'] as Map<String, dynamic>;
+    }
+    if (snapshot?['payload'] is Map) {
+      return Map<String, dynamic>.from(snapshot!['payload'] as Map);
+    }
+    return null;
+  }
 
   String _session(dynamic s) {
     if (s is Map) {
       final id = s['sessionId'] ?? s['id'] ?? '?';
       final state = s['state'] ?? '';
-      return '$id${state.toString().isEmpty ? '' : '  ($state)'}';
+      return '$id${state.toString().isEmpty ? '' : ' ($state)'}';
     }
     return s.toString();
-  }
-
-  Widget _connectorsCard() {
-    final cats = (_connectors?['connectorCategories'] is List)
-        ? _connectors!['connectorCategories'] as List
-        : const [];
-    return _card(
-      'Connector catalog (${cats.length})',
-      cats.isEmpty
-          ? const Text('(none)')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final c in cats)
-                  if (c is Map)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        '${c['name']}: '
-                        '${(c['providers'] is List) ? (c['providers'] as List).join(', ') : ''}',
-                      ),
-                    ),
-              ],
-            ),
-    );
   }
 }

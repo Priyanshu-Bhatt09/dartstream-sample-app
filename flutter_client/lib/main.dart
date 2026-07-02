@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell_screen.dart';
 import 'state/session.dart';
+import 'ui/app_theme_controller.dart';
 import 'ui/retro_style.dart';
 
 void main() => runApp(const DartstreamApp());
@@ -31,13 +32,21 @@ class _DartstreamAppState extends State<DartstreamApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flappy Bird Game',
-      debugShowCheckedModeBanner: false,
-      theme: buildRetroTheme(),
-      home: _session.status == SessionStatus.signedIn
-          ? ShellScreen(session: _session)
-          : LoginScreen(session: _session),
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Flappy Bird Game',
+          debugShowCheckedModeBanner: false,
+          theme: buildRetroTheme(),
+          themeMode: AppThemeController.instance.darkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          home: _session.status == SessionStatus.signedIn
+              ? ShellScreen(session: _session)
+              : LoginScreen(session: _session),
+        );
+      },
     );
   }
 }

@@ -9,6 +9,8 @@ It includes:
 - Firebase sign up / sign in
 - a post-login shell with live service screens
 - a Flappy Bird clone powered by live DartStream state
+- a dedicated IntelliToggle control surface for evaluating flags, updating
+  targeting, and viewing hook logs
 - headless Dart smoke/deep-dive harnesses for the backend contracts
 - optional marketing/demo seeding for screenshots
 
@@ -20,6 +22,9 @@ It includes:
   session.
 - The game is driven by live DartStream feature flags, cloud-save, and reactive
   telemetry.
+- IntelliToggle is integrated through the public
+  `openfeature_provider_intellitoggle` package and exposed in the shell as a
+  dedicated screen.
 - Cloud-save and event envelope contract tests are present in
   `flutter_client/test/`.
 - CI runs analysis, tests, and a fresh web build with a dummy define.
@@ -99,6 +104,14 @@ Environment values:
 - `API_EXPERIENCE` - experience service host
 - `API_REACTIVE` - reactive service host
 - `API_PERSISTENCE` - persistence service host
+- `INTELLITOGGLE_API_URL` - IntelliToggle API base URL used by the Flutter client
+- `INTELLITOGGLE_TOKEN_URL` - optional IntelliToggle token endpoint override
+- `INTELLITOGGLE_CLIENT_ID` - IntelliToggle client credential for the Flutter client
+- `INTELLITOGGLE_CLIENT_SECRET` - IntelliToggle client secret for the Flutter client
+- `INTELLITOGGLE_TENANT_ID` - IntelliToggle tenant identifier
+- `INTELLITOGGLE_PROJECT_ID` - IntelliToggle project identifier shown in the UI
+- `INTELLITOGGLE_ENVIRONMENT` - IntelliToggle environment label shown in the UI
+- `INTELLITOGGLE_FLAG_KEY` - default flag key used by the IntelliToggle screen
 
 ## Run the root smoke CLI
 
@@ -116,7 +129,15 @@ From the repo root:
 ```powershell
 cd flutter_client
 flutter pub get
-flutter run -d chrome --web-port=3000 --dart-define=FIREBASE_API_KEY=YOUR_KEY
+flutter run -d chrome --web-port=3000 `
+  --dart-define=FIREBASE_API_KEY=YOUR_KEY `
+  --dart-define=INTELLITOGGLE_API_URL=https://api.intellitoggle.com `
+  --dart-define=INTELLITOGGLE_CLIENT_ID=YOUR_CLIENT_ID `
+  --dart-define=INTELLITOGGLE_CLIENT_SECRET=YOUR_CLIENT_SECRET `
+  --dart-define=INTELLITOGGLE_TENANT_ID=YOUR_TENANT_ID `
+  --dart-define=INTELLITOGGLE_PROJECT_ID=YOUR_PROJECT_ID `
+  --dart-define=INTELLITOGGLE_ENVIRONMENT=development `
+  --dart-define=INTELLITOGGLE_FLAG_KEY=enabledarkmode
 ```
 
 ## Run analysis
@@ -142,6 +163,8 @@ The repo includes `.github/workflows/ci.yml` for:
 
 - The Flutter app now uses the public `dartstream_client` package.
 - The game saves the high score locally and in DartStream cloud-save.
+- IntelliToggle has its own shell screen for flag evaluation, targeting edits,
+  and hook logs.
 - The Flutter client includes contract tests for the save and event payloads.
 - The app uses one client SDK path and one session bootstrap path.
 - The dashboard is intentionally simple so the architecture stays clear.

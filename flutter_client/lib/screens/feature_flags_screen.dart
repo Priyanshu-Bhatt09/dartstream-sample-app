@@ -142,6 +142,46 @@ class _FeatureFlagsScreenState extends State<FeatureFlagsScreen> {
     if (created == true) await _load();
   }
 
+  Future<void> _removeOthers() async {
+    final flags = await _api.listFeatureFlags(tenantId: _tenantId);
+    if (!mounted) return;
+    final extras = flags.where((flag) {
+      if (flag is! Map) return false;
+      return _key(flag) != 'new_flow';
+    }).toList(growable: false);
+    if (extras.isEmpty) {
+      _snack('Only "new_flow" exists already.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove other flags?'),
+        content: Text(
+          'This will delete ${extras.length} flag(s) and keep only "new_flow".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete others'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    for (final flag in extras) {
+      if (flag is Map) {
+        await _api.deleteFeatureFlag(tenantId: _tenantId, flagKey: _key(flag));
+      }
+    }
+    _snack('Removed all flags except "new_flow".');
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -191,6 +231,12 @@ class _FeatureFlagsScreenState extends State<FeatureFlagsScreen> {
               Text('Feature flags (${_flags.length})',
                   style: Theme.of(context).textTheme.titleLarge),
               const Spacer(),
+              OutlinedButton.icon(
+                onPressed: widget.session.api == null ? null : _removeOthers,
+                icon: const Icon(Icons.delete_sweep, size: 18),
+                label: const Text('Remove others'),
+              ),
+              const SizedBox(width: 8),
               IconButton(
                 tooltip: 'Refresh',
                 onPressed: _load,
@@ -203,7 +249,7 @@ class _FeatureFlagsScreenState extends State<FeatureFlagsScreen> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
               child: Center(
-                child: Text('No flags yet — create one with “New flag”.'),
+                child: Text('No flags yet - create one with "New flag".'),
               ),
             )
           else
@@ -288,8 +334,8 @@ class _CreateFlagDialog extends StatefulWidget {
 }
 
 class _CreateFlagDialogState extends State<_CreateFlagDialog> {
-  final _key = TextEditingController();
-  final _name = TextEditingController();
+  final _key = TextEditingController(text: 'new_flow');
+  final _name = TextEditingController(text: 'New flow');
   final _description = TextEditingController();
   bool _enabled = true;
   bool _submitting = false;
@@ -351,7 +397,7 @@ class _CreateFlagDialogState extends State<_CreateFlagDialog> {
               enabled: !_submitting,
               decoration: const InputDecoration(
                 labelText: 'Key *',
-                hintText: 'new_checkout_flow',
+                hintText: 'new_flow',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -361,7 +407,7 @@ class _CreateFlagDialogState extends State<_CreateFlagDialog> {
               enabled: !_submitting,
               decoration: const InputDecoration(
                 labelText: 'Name',
-                hintText: 'New checkout flow',
+                hintText: 'New flow',
                 border: OutlineInputBorder(),
               ),
             ),
